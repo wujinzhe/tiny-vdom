@@ -5,10 +5,8 @@ let render = (date, methods) =>(
   <div class="div">
     <div useDate>{ date.count }</div>
     <button onClick={ methods.add }>按钮</button>
-    { 
-      date.show
-        ? <div style={date.style}>我出来了</div>
-        : <p>啦啦啦啦</p>
+    {
+      date.show ? <span>显示</span> : ''
     }
     <button onclick={ 
       () => {
@@ -24,7 +22,7 @@ let render = (date, methods) =>(
     }>全部</button>
   </div>
 )
-
+// console.log(render)
 // let render = (date, methods) => (
 //   <div>
 //     <p>{ date.count }</p>
@@ -46,6 +44,7 @@ new app({
   },
   methods: {
     add () {
+      console.log(this)
       // console.log(this)
       this.count++
     },
