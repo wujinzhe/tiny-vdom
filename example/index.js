@@ -10,9 +10,11 @@ let a = (date, methods) =>(
         ? <div style={date.style}>我出来了</div>
         : <div>啦啦啦啦</div>
     }
-    <button onclick={ () => {
-      date.show = !date.show
-    } }>切换</button>
+    <button onclick={ 
+      () => {
+        date.show = !date.show
+      } 
+    }>切换</button>
     <br></br>
     <button onclick={
       () => {
