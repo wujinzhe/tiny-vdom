@@ -1,16 +1,18 @@
+import VNode from './VNode.js'
 /**
- * 创建虚拟dom元素
- * @param {*} node 
- * @param {Object} current 当前元素的实例的this
+ * 将虚拟dom元素转化成真实dom
+ * 并且绑定事件
+ * @param {*} node
  */
-function createElement (node, current) {
+function createElement (node) {
   let $el
 
-  if (typeof node === 'string' || typeof node === 'number') {
-    return document.createTextNode(node)
+  // 文本类型结点
+  if (node.type === 'text') {
+    return node.setElm(document.createTextNode(node.value))
   }
 
-  $el = document.createElement(node.type, current)
+  $el = document.createElement(node.type)
 
   // 设置属性
   for (let item in node.props) {
@@ -20,7 +22,7 @@ function createElement (node, current) {
         // console.log('this', current)
         // let date = current
         // 执行元素绑定的方法
-        node.props[item].bind(current)()
+        node.props[item]()
         // 如果方法返回的是个promise 则在then后面执行更新函数
         // if (result instanceof Promise) {
         //   result.then(() => {
@@ -44,10 +46,10 @@ function createElement (node, current) {
     }
   }
 
-  node.children.forEach(item => $el.appendChild(createElement(item, current)))
+  node.children.forEach(item => $el.appendChild(createElement(item)))
   
-  return $el
-
+  // 需要将真实的dom内容保留在虚拟dom中
+  return (node.elm = $el)
 }
 
 // function getHash () {
@@ -70,7 +72,15 @@ function sameProps (oldVnode, newVnode) {
   return true
 }
 
+/**
+ * 比较两个结点是否为等价结点
+ * @param {*} oldVnode
+ * @param {*} newVnode
+ * @returns {Boolean} 是否为等价结点
+ */
 function sameVnode (oldVnode, newVnode) {
+
+  // console.log(oldVnode, newVnode)
 
   /** 判断两个属性是否相同 */
 
@@ -83,46 +93,61 @@ function sameVnode (oldVnode, newVnode) {
 
   //   return false
   // }
-
-  // 表示节点为text类型 并且两个文本值相同 则表示相同
-  if (!oldVnode.type && (oldVnode === oldVnode)) return true
+  // console.log(oldVnode, newVnode)
+  // 如果节点为text类型 并且两个文本值相同 则表示相同
+  if (isTextNode(oldVnode) && isTextNode(newVnode) && (oldVnode.value === newVnode.value)) return true
 
   // 如果不为文本节点 则需要标签类型相等 则表示相同
-  return oldVnode.type && (oldVnode.type === newVnode.type)
+  return oldVnode.type !== 'text' && (oldVnode.type === newVnode.type)
   // && sameProps()
   // && sameChildren()
 }
 
-/** 比较两个节点的差异 */
+/** 判读结点是否为文本 */
+function isTextNode (Vnode) {
+  return Vnode.type === 'text'
+}
+
+/** 
+ * 比较两个节点的差异
+ * 比较的是两个虚拟dom，但是如果要进行操作的话需要使用createElement()函数
+ * 转化成真实的dom，来进行操作
+ * oldVnode 和 newVnode 有可能是字符串或者数字
+ */
 function patchVnode (el, oldVnode, newVnode) {
-  // debugger
+
   // 如果两个节点都没有 则无需比较
   if (!oldVnode && !newVnode) return
 
-  // 可能为文本节点
-  if (typeof oldVnode === 'string') oldVnode = document.createTextNode(oldVnode)
-  if (typeof newVnode === 'string') newVnode = document.createTextNode(newVnode)
-  
-  // 如果老节点为null 则直接挂在新节点
-  if (!oldVnode || oldVnode.length === 0) return el.appendChild(newVnode)
+  // // 如果为文本节点
+  // if (isTextNode(oldVnode)) oldVnode = document.createTextNode(oldVnode)
+  // if (isTextNode(newVnode)) newVnode = document.createTextNode(newVnode)
+
+  // 如果老节点为null 则直接挂载新节点
+  // console.log(oldVnode, newVnode)
+  if (!oldVnode) return el.appendChild(newVnode.elm)
   
   // 如果新节点为null 则直接删除老节点
-  if (!newVnode || newVnode.length === 0) return el.removeChild(oldVnode)
+  if (!newVnode) return el.removeChild(oldVnode.elm)
   
-  // 如果两个节点一致，则继续比较下一层级的所有节点的区别
-  // 如果节点为text内容 则按照两个节点不相等
-  // 暂时两个节点的属性修改 还未实现
+  
+  /* 如果两个节点相同，则继续比较下一层级的所有节点
+   * 暂时两个节点的属性修改 还未实现
+   */ 
   if (sameVnode(oldVnode, newVnode)) {
-
     // 如果两个节点为相同的文本节点 那么它们的children都为undefined
     // 为了排除这一种可能 需要做判断处理
     oldVnode.children
     && oldVnode.children
     && diff(oldVnode, oldVnode.children, newVnode.children)
   } else {
+    // console.log(oldVnode, newVnode)
+    // console.log(el)
+    // console.log(newVnode.elm || newVnode, oldVnode.elm || oldVnode)
     // 如果两个节点类型不一致 则认为是两个不一样的节点，直接将新节点替换掉老节点
-    el.removeChild(oldVnode)
-    el.appendChild(newVnode)
+    console.log(oldVnode.elm)
+    el.insertBefore(newVnode.elm, oldVnode.elm)
+    el.removeChild(oldVnode.elm)
     return
   }
 }
@@ -153,14 +178,14 @@ function diff (el, oldVnode, newVnode) {
   // 如果老的节点数大于新的节点数
   if (oldVnodeLength > newVnodeLength) {
     oldVnode.slice(oldStart).forEach(item => {
-      if (typeof item === 'string') item = document.createTextNode(item)
+      // if (typeof item === 'string') item = document.createTextNode(item)
       el.removeChild(item)
     })
   }
 
   if (oldVnodeLength < newVnodeLength) {
     newVnode.slice(newStart).forEach(item => {
-      if (typeof item === 'string') item = document.createTextNode(item)
+      // if (typeof item === 'string') item = document.createTextNode(item)
       el.appendChild(item)
     })
   }
@@ -170,24 +195,20 @@ function mount (el, node) {
   el.appendChild(node)
 }
 
-// class Node {
-//   constructor (type, props, children) {
-//     this.type = type
-//     this.props = props;
-//     this.children = children
-//   }
-
-//   /**
-//    * 将虚拟dom挂载到某个元素上
-//    * @param {*} el HTML中的某个元素，如果有多个则使用第一个
-//    */
-//   // mount (el) {
-//   //   document.querySelector(el).appendChild(this)
-//   // }
-// }
-
+/** 转换成虚拟dom对象 */
 window.h = function h (type, props, ...children) {
-  return {type, props, children}
+  // 文本结点只会返回一个字符串，所以需要重新对文本结点组装成一个对象
+  children = children.map(item => {
+    if (typeof item === 'string' || typeof item === 'number') {
+
+      let vnode = new VNode('text', null, [])
+      vnode.setValue(item)
+      return vnode
+    }
+    return item
+  })
+
+  return new VNode(type, props, children)
 }
 
 export function component ({
@@ -233,8 +254,15 @@ export function app ({
     })
   }
 
-  this.$oldVnode = this.$newVnode = createElement(render(this, this.$methods), this)
-  // this.$oldVnode = this.$newVnode = render(this, this.$methods)
+  // this.$oldVnode = this.$newVnode = createElement(render(this, this.$methods), this)
+
+  /** 
+   * 内存中存储的为虚拟dom 调用document.createElement 
+   * 等方法创建的都是真实dom，只不过可能并没有渲染到屏幕上
+   */
+  this.$oldVnode = this.$newVnode = render(this, this.$methods)
+  // console.log(this.$oldVnode)
+  // createElement(this.$oldVnode, this)
 
   this.$isUpdate = null // 是否已经把数据更新放到了微任务中去了
   // 需要挂载的元素
@@ -245,16 +273,10 @@ export function app ({
     cb()
   }
 
+  console.log(this.$oldVnode)
   // 将实例的this传入元素中，当元素调用事件时，this就指向了该实例了
-  // mount(this.$el, createElement(this.$oldVnode, this))
-  mount(this.$el, this.$oldVnode)
-
-
-  // /** 检查两个dom的区别 */
-  // function diff (oldDom, newDom) {
-    
-  // }
-
+  mount(this.$el, createElement(this.$oldVnode))
+  // mount(this.$el, this.$oldVnode)
 }
 
 // app.prototype.$set = function () {
@@ -273,12 +295,23 @@ app.prototype.$update = function () {
     // let span = document.createElement('span')
     // span.innerText = '我是span'
     // this.$oldVnode.appendChild(span)
-    this.$newVnode = createElement(this.$view(this, this.$methods), this)
-    this.$el.removeChild(this.$oldVnode)
-    this.$el.appendChild(this.$newVnode)
-    this.$oldVnode = this.$newVnode
-    // this.$newVnode = this.$view(this, this.$methods)
-    // patchVnode(this.$el, this.$oldVnode, this.$newVnode)
+
+    // 简单的覆盖掉原有的所有元素
+    // this.$newVnode = createElement(this.$view(this, this.$methods), this)
+    // this.$el.removeChild(this.$oldVnode)
+    // this.$el.appendChild(this.$newVnode)
+    // this.$oldVnode = this.$newVnode
+
+    // 比较的仍然为虚拟dom，在比较的过程中才需要转换成真实dom
+    this.$newVnode = this.$view(this, this.$methods)
+
+    // 将真实dom以elm属性的方式加到虚拟dom中
+    createElement(this.$newVnode)
+
+    // el为真实dom，oldVnode和newVnode都为虚拟dom
+    patchVnode(this.$el, this.$oldVnode, this.$newVnode)
+    // this.$oldVnode = this.$newVnode
+
     this.$isUpdate = null
   })
 }
