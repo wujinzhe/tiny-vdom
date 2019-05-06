@@ -171,6 +171,7 @@ export function app ({
 
     Object.defineProperty(this, i, {
       get () {
+        if (i === 'style') return this.$toClassOrStyleString(date[i])
         return date[i]
       },
       set (value) {
@@ -234,4 +235,12 @@ app.prototype.$update = function () {
   })
 }
 
-// app.prototype.$
+/** 将样式对象或者类对象转化成字符串 */
+app.prototype.$toClassOrStyleString = function (obj) {
+  let string = ''
+  for (let i in obj) {
+    string = `${string}${i.replace(/(?!^)(?=[A-Z])/g, '-').toLowerCase()}:${obj[i]};`
+  }
+
+  return string
+}
