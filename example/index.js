@@ -3,7 +3,7 @@ import {app} from '../src/index'
 
 let render = (date, methods) =>(
   <div class="div">
-    <div useDate>{ date.count }</div>
+    <div style="color: blue;display: inline-block;" style={ date.style }>{ date.count }</div>
     <button onClick={ methods.add }>按钮</button>
     {
       date.show ? <span>显示</span> : ''
@@ -22,13 +22,6 @@ let render = (date, methods) =>(
     }>全部</button>
   </div>
 )
-// console.log(render)
-// let render = (date, methods) => (
-//   <div>
-//     <p>{ date.count }</p>
-//     <button onClick={ methods.add }>按钮</button>
-//   </div>
-// )
 
 new app({
   el: '#app',
@@ -38,7 +31,9 @@ new app({
     style: {
       width: '100px',
       height: '100px',
-      background: 'red'
+      background: 'red',
+      color: 'white',
+      textAlign: 'center'
     },
     show: false
   },
